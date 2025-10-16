@@ -93,27 +93,6 @@ def call() {
                 }
             }
 
-            stage('Commit VSIX to Main Repo') {
-                steps {
-                    withCredentials([sshUserPrivateKey(credentialsId: 'JENKINS_SSH_KEY', keyFileVariable: 'SSH_KEY')]) {
-                        bat """
-                            echo SSH key file path: %SSH_KEY%
-                            dir "%SSH_KEY%"
-                            SET GIT_SSH_COMMAND=ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no
-                            git config --global user.name "jenkins-bot"
-                            git config --global user.email "jenkins-bot@example.com"
-                            git remote set-url origin git@github.com:jagan786786/TaskBoard.git
-                    
-                            git add frontend\\vsix_package_versions\\*.vsix
-                            git diff --cached --quiet || (
-                                git commit -m "chore: add VSIX package"
-                                git pull --rebase origin main
-                                git push origin main
-                            )
-                        """
-                    }
-                }
-            }
 
             stage('Push VSIX to External Repo') {
                 steps {
