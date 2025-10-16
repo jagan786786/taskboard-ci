@@ -14,8 +14,42 @@ def call() {
                 steps {
                     echo "Checking out source branch ${BRANCH}"
                     git branch: "${BRANCH}", url: 'https://github.com/jagan786786/TaskBoard.git', credentialsId: 'github-token'
+                    script {
+                        // Fetch commit details
+                        def lastAuthor = bat(script: "git log -1 --pretty=format:'%an'", returnStdout: true).trim()
+                        def lastMessage = bat(script: "git log -1 --pretty=%%B", returnStdout: true).trim()
+                        def changedFilesRaw = bat(script: "git diff --name-only HEAD~1 HEAD", returnStdout: true).trim()
+                        def changedFiles = changedFilesRaw ? changedFilesRaw.split("\\r?\\n") : []
+                        def ignoredPaths = ["package.json", "package-lock.json", "frontend/vsix_package_versions/"]
+            
+                        // Determine if only ignored files were changed
+                        def onlyIgnored = changedFiles && changedFiles.every { file ->
+                            ignoredPaths.any { ignored ->
+                                file.endsWith(ignored) || file.startsWith(ignored)
+                            }
+                        }
+            
+                        // Debug logging
+                        echo "Last commit author: ${lastAuthor}"
+                        echo "Last commit message: ${lastMessage}"
+                        echo "Changed files: ${changedFiles}"
+                        echo "Only ignored files: ${onlyIgnored}"
+            
+                        // --- Skip logic ---
+                        if (lastAuthor == "jenkins-bot" ||
+                            lastMessage.toLowerCase().contains("chore: add vsix") ||
+                            lastMessage.toLowerCase().contains("chore: bump version") ||
+                            lastMessage.toLowerCase().contains("[skip ci]") ||
+                            onlyIgnored) {
+            
+                            echo "Skipping build: last commit by bot or only ignored/auto-generated files changed."
+                            currentBuild.result = 'SUCCESS'
+                            error("Build skipped intentionally due to auto-generated commit.")
+                        }
+                    }
                 }
             }
+               
 
             stage('Setup Node & Install Dependencies') {
                 tools { nodejs 'node20' }
